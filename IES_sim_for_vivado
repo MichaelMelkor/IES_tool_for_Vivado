@@ -1,0 +1,133 @@
+#!/bin/bash
+################################################################################
+
+echo "==========================================="
+echo "__    __  _____        _   _____   __   _ " 
+echo "\ \  / / |  _  \      | | /  ___/ |  \ | |" 
+echo " \ \/ /  | | | |      | | | |___  |   \| |" 
+echo "  }  {   | | | |      | | \___  \ | |\   |" 
+echo " / /\ \  | |_| |      | |  ___| | | | \  |" 
+echo "/_/  \_\ |_____/      |_| /_____/ |_|  \_| "
+echo "==========================================="
+echo -e "        \033[43;30mIES_sim_for_vivado  V1.0\033[0m" 
+echo -e "Author: Michael" 
+echo -e "Email : zhangzhongyu1202@126.com" 
+echo -e "===========================================\n"
+export vivado_xpr_name=`find ../ -maxdepth 1 -name "*.xpr"  -exec basename {} \; `
+export script_DIR=`pwd`
+export vivado_proj_dir=`dirname $script_DIR`
+export behav_DIR="Cannot Found Any 'behav' DIR"
+
+echo -e "****\033[31mMake sure you've added these following sentences in your Testbench\033[0m****"
+echo "//=============== For NC_sim ===============//"
+echo "initial begin                                 "
+echo "    \$shm_open(\"NC_run.shm\");                  "
+echo "    \$shm_probe(\"ACSMTF\");                     "
+echo "end                                           "    
+echo "//=============== For NC_sim ===============//"
+echo -e "\n"
+
+if [ "${vivado_xpr_name}" != "" ]; then
+
+    while [ "${i}" != "exit" ]
+    do
+        echo -e "You are using the Vivado Project .xpr : <\033[32m$vivado_xpr_name\033[0m> "
+
+        behav_DIR=`find $vivado_proj_dir -name "behav"`
+        if [ "${behav_DIR}" != "" ]; then
+            echo -e "Your 'behav' DIR is : <\033[32m$behav_DIR\033[0m> "
+        else
+            echo -e "Your 'behav' DIR is : <\033[31mCannot Found Any 'behav' DIR\033[0m> "
+        fi
+
+        echo "Which step do you want to take ? "
+        echo -e "    simlib)     config \033[36m IES's Xilinx-Lib \033[0m \n"
+        echo -e "    vivado_sim) \033[36mVivado generate simulation files\033[0m \n"
+        echo -e "    incdir)     \033[36mAdd include files\033[0m \n"
+        echo -e "    gui)        \033[32mStart Vivado GUI\033[0m \n "
+        echo -e "    setup)      \033[32mIES Simulation Setup\033[0m \n"
+        echo -e "    run)        \033[32mRUN IES SIMULATION\033[0m \n"
+        echo -e "    \n\033[31mexit)  EXIT\033[0m"
+        read -p "Please input 'number' or 'run' or 'exit' and then press 'Enter' : " i
+        echo -e "\n"
+        case $i in
+        simlib)
+            read -p "Please input your IES's Xilinx-Lib then press 'Enter' : " compile_lib
+    
+                cat ./script_file/sim_once.tcl | grep 'compxlib.ies_compiled_library_dir'| sed -i "/^set_property compxlib.ies_compiled_library_dir/cset_property compxlib.ies_compiled_library_dir $compile_lib [current_project]" ./script_file/sim_once.tcl
+                echo -e "\nLine in sim_once.tcl has become : "
+                cat ./script_file/sim_once.tcl | grep 'compxlib.ies_compiled_library_dir'
+    
+            echo -e "\n    -----config \033[36m IES's Xilinx-Lib \033[0m success!-----\n"
+            echo -e "    *****Press 'Enter' to return*****\n"
+            read anykey
+            echo -e "**********************************************************************\n**********************************************************************\n"
+                ;;
+        vivado_sim)
+            echo -e "You are using the Vivado Project .xpr : <\033[32m$vivado_xpr_name\033[0m> "
+            echo -e "\n"
+                vivado -mode batch -source ./script_file/sim_once.tcl ../$vivado_xpr_name
+            echo -e "    *****Press 'Enter' to return*****\n"
+            read anykey
+            echo -e "**********************************************************************\n**********************************************************************\n"
+                ;;
+        incdir)
+            echo -e "\033[36mNow you can add some 'include' files which not add by Vivado\033[0m"
+            read -p "Please Input the Path of your 'include' file and then press 'Enter' : " inc_dir
+            echo -e "$inc_dir" >> ./script_file/include_list
+            inc_dir=""
+
+            echo -n -e "\033[36mContinue Adding ? \033[0m(y/n):"
+            read continue_inc
+                while [ "${continue_inc}" != "n" ]
+                do
+                    continue_inc=""
+                    read -p "Please Input the Path of your 'include' file and then press 'Enter' : " inc_dir 
+                    echo -e "$inc_dir" >> ./script_file/include_list
+                    inc_dir=""
+                    echo -n -e "\033[36mContinue Adding ? \033[0m(y/n):"
+                    read continue_inc
+                done    
+                export inc_list=`cat ./script_file/include_list | sed -i '/^$/d' ./script_file/include_list | awk BEGIN{RS=EOF}'{gsub(/\n/," ");print}' ./script_file/include_list`
+
+                vivado -mode batch -source ./script_file/include_file.tcl ../$vivado_xpr_name
+            echo "You have added these include files dir : "
+            echo -e "\033[32m`cat ./script_file/include_list`\033[0m"
+            
+            echo -e "    *****Press 'Enter' to return*****\n"
+            read anykey
+            echo -e "**********************************************************************\n**********************************************************************\n"
+                ;;
+        setup)
+            source ./script_file/vivado_setup.sh
+            echo -e "    *****Press 'Enter' to return*****\n"
+            read anykey
+            echo -e "**********************************************************************\n**********************************************************************\n"
+                ;;
+        run)
+            source ./script_file/vivado_simrun.sh
+            echo -e "    *****Press 'Enter' to return*****\n"
+            read anykey
+            echo -e "**********************************************************************\n**********************************************************************\n"
+                ;;  
+        gui)
+            vivado -source ../$vivado_xpr_name
+            
+            echo -e "    *****Press 'Enter' to return*****\n"
+            read anykey
+            echo -e "**********************************************************************\n**********************************************************************\n"
+                ;;      
+        exit)
+            echo -e "**********************************************************************\n**********************************************************************\n"
+                ;;
+        *)
+            echo -e "\n    \033[31mERROR: Please input an avaliable Option!\033[0m"
+            echo -e "    *****Press 'Enter' to return*****\n"
+            read anykey
+            esac
+    done 
+else
+    echo -e "\033[31m******ERROR : Cannot Find Any Vivado Project!******\033[0m"
+fi    
+i=""
+echo -e "    \033[32m********  Exit  ********\033[0m"
